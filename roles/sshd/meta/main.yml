@@ -1,0 +1,36 @@
+galaxy_info:
+  author: Jason Glass
+  description: Configure the sshd daemon
+  company: N/A
+
+  # If the issue tracker for your role is not on github, uncomment the
+  # next line and provide a value
+  # issue_tracker_url: http://example.com/issue/tracker
+
+  # Choose a valid license ID from https://spdx.org - some suggested licenses:
+  # - BSD-3-Clause (default)
+  # - MIT
+  # - GPL-2.0-or-later
+  # - GPL-3.0-only
+  # - Apache-2.0
+  # - CC-BY-4.0
+  license: BSD-3-Clause
+
+  min_ansible_version: 2.12
+
+  platforms:
+  - name: Fedora
+    versions:
+    - all
+  - name: CentOS
+    versions:
+    - all
+  - name: RHEL
+    versions:
+    - all
+
+  galaxy_tags:
+  - "sshd"
+  - "ssh"
+
+dependencies: []

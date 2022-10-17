@@ -1,0 +1,51 @@
+---
+# defaults file for sshd
+
+sshd_packages:
+- "openssh"
+
+### Main sshd_config file settings
+# must quote yes or no values, or yaml parsing will misinterpret them as booleans
+sshd_port: 22
+sshd_permitroot: "no"
+
+sshd_passwd_auth: "no"
+sshd_pubkey_auth: "yes"
+
+sshd_loglevel: "INFO"
+
+# Set higher for bastion/jump host
+sshd_maxsessions: 30
+
+sshd_listen_addresses:
+- "0.0.0.0"
+- "::"
+
+sshd_agent_forwarding: "yes"
+sshd_tcp_forwarding: "yes"
+sshd_x11_forwarding: "no"
+
+sshd_client_alive_int: 20
+sshd_client_alive_count: 5
+
+sshd_permit_tunnel: "no"
+sshd_permit_userrc: "no"
+sshd_print_motd: "no"
+
+# Choose "sftp-server" or "internal"
+sshd_sftp_subsystem: "internal"
+
+### Freeform config blocks
+
+#These go in sshd_config.d, which has precedence over any other config
+sshd_freeform_overrides: []
+#- filename: "match_192_168_0_0_24_ips"
+#  content: |
+#    Match Address 192.168.0.0/24
+#    X11Forwarding true
+
+#These become templated Match entries in the main config file
+sshd_match_blocks: []
+#- match: "Address 192.168.0.0/24"
+#  content: |
+#    X11Forwarding true

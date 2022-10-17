@@ -1,0 +1,78 @@
+---
+# tasks file for sshd
+# Prefer to fail before any config changes if SELinux requirements aren't met.
+- name: "Assert that python requirements for SELinux are installed if it is in use"
+  ansible.builtin.assert:
+    that: ansible_selinux_python_present | bool
+    fail_msg: >
+          SELinux has been detected as enabled but the python requirements for Ansible are not installed. Please install
+          libselinux-python and policycoreutils-python for Ansible's python environment.
+  when: ansible_selinux is defined and ansible_selinux != False and ansible_selinux.status == 'enabled'
+
+- name: "Include distro-specific vars"
+  ansible.builtin.include_vars: "{{ item }}"
+  loop: "{{ lookup('ansible.builtin.first_found', to_find, skip=True)}}"
+  vars:
+    to_find:
+    - "{{ ansible_distribution }}{{ ansible_distribution_major_version }}.yml"
+    - "{{ ansible_distribution }}.yml"
+    - "{{ ansible_os_family }}.yml"
+
+- name: "Install openssh package and dependencies"
+  ansible.builtin.package:
+    name: "{{ sshd_packages }}"
+    state: "present"
+  become: true
+
+# This seems like a bug in Fedora 35 that host keys aren't generated until a systemd restart | 20221015
+# In order for the template tasks' validation to work the host keys must exist first.
+- name: "Check for host keys"
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  register: r_hostkey_check
+  loop:
+  - "/etc/ssh/ssh_host_ecdsa_key"
+  - "/etc/ssh/ssh_host_ed25519_key"
+  - "/etc/ssh/ssh_host_rsa_key"
+
+- name: "Restart openssh to generate host keys"
+  ansible.builtin.service:
+    name: "sshd"
+    enabled: true
+    state: "restarted"
+  when: not ( r_hostkey_check.results[0].stat.exists or r_hostkey_check.results[1].stat.exists or r_hostkey_check.results[2].stat.exists )
+  become: true
+
+# These are first, to be checked by the main config's validate command
+- name: "Create override sshd config templates"
+  ansible.builtin.copy:
+    content: "{{ item.content }}"
+    dest: "/etc/ssh/sshd_config.d/{{ item.filename }}.conf"
+    owner: "root"
+    group: "root"
+    mode: 0600
+    validate: "sshd -t -f /etc/ssh/sshd_config"
+  become: true
+  loop: "{{ sshd_freeform_overrides }}"
+  notify: "restart sshd"
+
+- name: "Create main sshd_config template"
+  ansible.builtin.template:
+    src: "sshd_config.j2"
+    dest: "/etc/ssh/sshd_config"
+    owner: "root"
+    group: "root"
+    mode: 0600
+    validate: "sshd -t -f %s"
+  become: true
+  notify: "restart sshd"
+
+- name: "SELinux port change if required"
+  community.general.seport:
+    ports: "{{ sshd_port }}"
+    proto: "tcp"
+    setype: "ssh_port_t"
+    state: "present"
+  become: true
+  when: ansible_selinux is defined and ansible_selinux != False and ansible_selinux.status == 'enabled'
+
